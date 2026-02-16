@@ -3,40 +3,63 @@ import bcrypt from "bcrypt";
 import db from "../config/db.js";
 
 const sendResponse = (res, statusCode, message, data = null) => {
-  return res.status(statusCode).json({
-    status: statusCode,
-    message,
-    data
-  });
+    return res.status(statusCode).json({
+        status: statusCode,
+        message,
+        data
+    });
 };
 
 export const signup = async (req, res) => {
-  try {
-    const { name, phone, email, password } = req.body;
+    try {
+        const { name, phone, email, password } = req.body;
 
-    // 1️⃣ Hash password
-    const passwordHash = await bcrypt.hash(password, 12);
+        
+        const passwordHash = await bcrypt.hash(password, 12);
 
-    // 2️⃣ Insert user
-    const sql = `
+        const sql = `
       INSERT INTO users (full_name, phone, email, password_hash)
       VALUES (?, ?, ?, ?)
     `;
 
-    await db.query(sql, [name, phone, email, passwordHash]);
+        await db.query(sql, [name, phone, email, passwordHash]);
 
-    // 3️⃣ Success
-    return sendResponse(res, 201, "Signup successful");
+        return sendResponse(res, 201, "Signup successful");
 
-  } catch (error) {
-    console.error("Signup error:", error);
+    } catch (error) {
+        console.error("Signup error:", error);
 
-    // 4️⃣ Duplicate email / phone
-    if (error.code === "ER_DUP_ENTRY") {
-      return sendResponse(res, 409, "Email or phone already exists");
+        if (error.code === "ER_DUP_ENTRY") {
+            return sendResponse(res, 409, "Email or phone already exists");
+        }
+
+        return sendResponse(res, 500, "Internal server error");
+    }
+};
+
+
+export const signin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
+        const [rows] = await db.query(sql, [email]);
+
+        if (rows.length === 0) {
+            return sendResponse(res, 500, "Invalid credentials");
+        }
+
+        const user = rows[0];
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+
+        if (!isMatch) {
+            return sendResponse(res, 500, "Invalid credentials");
+        }
+        return sendResponse(res, 201, "Signin successful");
+
+    } catch (error) {
+        console.error("Signup error:", error);
+        return sendResponse(res, 500, "Internal server error");
     }
 
-    // 5️⃣ Generic server error
-    return sendResponse(res, 500, "Internal server error");
-  }
-};
+}
