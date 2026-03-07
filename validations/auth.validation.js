@@ -24,7 +24,6 @@ export const signinSchema = z.object({
     password: z.string()
         .min(6, "Password must be at least 6 characters")
 })
-<<<<<<< HEAD
 
 export const checkEmailSchema = z.object({
     email: z.string()
@@ -33,5 +32,3 @@ export const checkEmailSchema = z.object({
 })
 
 
-=======
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf

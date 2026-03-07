@@ -2,7 +2,6 @@
 import bcrypt from "bcrypt";
 import db from "../config/db.js";
 import jwt, { decode } from 'jsonwebtoken';
-<<<<<<< HEAD
 import { sendEmail } from "../utils/sendEmail.js";
 import { verifyEmailTemplate } from "../emails/verifyEmailTemplate.js";
 import { forgotPasswordTemplate } from "../emails/forgotPasswordTemplate.js";
@@ -13,31 +12,16 @@ const sendResponse = (res, statusCode, message, data = null) => {
         success: statusCode >= 200 && statusCode < 300, // true if 2xx
         message,
         data // optional, can be undefined
-=======
-
-const sendResponse = (res, statusCode, message, data = null) => {
-    return res.status(statusCode).json({
-        status: statusCode,
-        message,
-        data
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf
     });
 };
 
 export const signup = async (req, res) => {
-<<<<<<< HEAD
     console.log("signup api hit")
     try {
         const { name, phone, email, password } = req.body;
         console.log(req.body)
 
         const lowerCaseEmail = email.toLowerCase();
-=======
-    try {
-        const { name, phone, email, password } = req.body;
-
-
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf
         const passwordHash = await bcrypt.hash(password, 12);
 
         const sql = `
@@ -45,11 +29,7 @@ export const signup = async (req, res) => {
       VALUES (?, ?, ?, ?)
     `;
 
-<<<<<<< HEAD
         await db.query(sql, [name, phone, lowerCaseEmail, passwordHash]);
-=======
-        await db.query(sql, [name, phone, email, passwordHash]);
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf
 
         return sendResponse(res, 201, "Signup successful");
 
@@ -66,10 +46,7 @@ export const signup = async (req, res) => {
 
 
 export const signin = async (req, res) => {
-<<<<<<< HEAD
     console.log("signin api hit")
-=======
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf
     try {
         const { email, password } = req.body;
 
@@ -135,20 +112,14 @@ export const refreshToken = async (req, res) => {
                 process.env.JWT_SECRET,
                 { expiresIn: process.env.JWT_EXPIRES_IN }
             )
-<<<<<<< HEAD
             console.log('newAccessToken', newAccessToken)
             sendResponse(res, 200, "new token has been assinged", { newAccessToken });
-=======
-          console.log('newAccessToken', newAccessToken)
-            sendResponse(res, 200,"new token has been assinged", {newAccessToken});
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf
         })
 
     } catch (error) {
         console.error(error);
         sendResponse(res, 500, "Internal server error");
     }
-<<<<<<< HEAD
 }
 
 
@@ -230,13 +201,11 @@ export const forgetPassword = async (req, res) => {
         console.error("Error: ", error)
         sendResponse(res, 505, "An unexpected error occurred")
     }
-
 }
 
 
 export const verifyOtp = async (req, res) => {
     try {
-
         const { otp } = req.body;
 
         if (!otp.trim()) return sendResponse(res, 400, "Otp is required");
@@ -262,6 +231,3 @@ export const verifyOtp = async (req, res) => {
         sendResponse(res, 505, "An unexpected error occurred")
     }
 }
-=======
-}
->>>>>>> 22be10d6f065883ada81fbf96d7ece494df7a5cf
