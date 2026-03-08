@@ -15,9 +15,6 @@ dotenv.config();
 app.get("/", (req, res) => {
     res.send("Wellcome from backend")
 })
-const PORT = 3000
-app.listen(PORT, () => {
-    console.log(`listening on ${PORT}`);
-});
 
-
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

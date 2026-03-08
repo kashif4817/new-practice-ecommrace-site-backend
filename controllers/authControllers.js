@@ -231,3 +231,18 @@ export const verifyOtp = async (req, res) => {
         sendResponse(res, 505, "An unexpected error occurred")
     }
 }
+
+export const updatePassword = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const sql = "UPDATE users SET password_hash = ? WHERE email = ?";
+
+        const [result] = await db.execute(sql, [password, email]);
+        if (result.length === 0) return sendResponse(res, 404, "No email found");
+
+        return sendResponse(res, 201, "Password updated successfully");
+    } catch (error) {
+        console.error("Error: ", error)
+        sendResponse(res, 505, "An unexpected error occurred")
+    }
+}
