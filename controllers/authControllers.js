@@ -48,7 +48,8 @@ export const signup = async (req, res) => {
 export const signin = async (req, res) => {
     console.log("signin api hit")
     try {
-        const { email, password } = req.body;
+        const { email, password, rememberMe } = req.body;
+        console.log(req.body);
 
         const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
         const [rows] = await db.query(sql, [email]);
@@ -81,13 +82,42 @@ export const signin = async (req, res) => {
 
 
         await db.query("UPDATE users SET refresh_token = ? WHERE id = ?", [refreshToken, user.id]);
-        return sendResponse(res, 201, "Signin successful", { accessToken });
+
+        const cookieOptions = {
+            httpOnly: true,  // cannot be accessed by JS
+            secure: false,   // true in production with HTTPS
+            sameSite: "Lax",
+            maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : undefined
+        };
+
+        console.log('cookieOptions', cookieOptions);
+        // if (rememberMe) cookieOptions.maxAge = 7 * 24 * 60 * 60 * 1000;
+
+
+        res.cookie("token", accessToken, cookieOptions);
+        return sendResponse(res, 201, "Signin successful", {
+            user: {
+                id: user.id,
+                full_name: user.full_name,
+                phone: user.phone,
+                email: user.email
+            }, accessToken
+        });
 
     } catch (error) {
         console.error("Signup error:", error);
         return sendResponse(res, 500, "Internal server error");
     }
 
+}
+
+export const logout = async (req, res) => {
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: false,   
+        sameSite: "Lax"
+    })
+    sendResponse(res,200, "Logged out successfully")
 }
 
 
@@ -231,6 +261,8 @@ export const verifyOtp = async (req, res) => {
         sendResponse(res, 505, "An unexpected error occurred")
     }
 }
+
+
 
 export const updatePassword = async (req, res) => {
     try {

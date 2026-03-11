@@ -23,7 +23,7 @@ export const signinSchema = z.object({
         .transform(val => val.toLocaleLowerCase().trim()),
     password: z.string()
         .min(6, "Password must be at least 6 characters")
-})
+}).passthrough();
 
 export const checkEmailSchema = z.object({
     email: z.string()
