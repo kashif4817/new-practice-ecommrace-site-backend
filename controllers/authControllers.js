@@ -15,6 +15,31 @@ export const sendResponse = (res, statusCode, message, data = null) => {
     });
 };
 
+export const getMe = async (req, res) => {
+    const id = req.id
+    console.log(id);
+    try {
+        const sql = "select * from users where id = ? limit 1";
+
+        const [result] = await db.execute(sql, [id]);
+        console.log('result', result)
+        console.log('result[0]', result[0])
+        if (result.length === 0) return sendResponse(res, 404, "No data found");
+
+        const user = result[0];
+        sendResponse(res, 200, "Data fetch successfully", {
+            id: user.id,
+            full_name: user.full_name,
+            phone: user.phone,
+            email: user.email
+        })
+    } catch (error) {
+        console.error(error)
+        return sendResponse(res, 500, "Internal server error");
+    }
+}
+
+
 export const signup = async (req, res) => {
     console.log("signup api hit")
     try {
@@ -114,10 +139,10 @@ export const signin = async (req, res) => {
 export const logout = async (req, res) => {
     res.clearCookie("token", {
         httpOnly: true,
-        secure: false,   
+        secure: false,
         sameSite: "Lax"
     })
-    sendResponse(res,200, "Logged out successfully")
+    sendResponse(res, 200, "Logged out successfully")
 }
 
 
@@ -264,14 +289,30 @@ export const verifyOtp = async (req, res) => {
 
 
 
-export const updatePassword = async (req, res) => {
+export const resetPassword = async (req, res) => {
     try {
-        const { email, password } = req.body;
-        const sql = "UPDATE users SET password_hash = ? WHERE email = ?";
+        const { currentPassword, newPassword } = req.body;
+        const id = req.id;
 
-        const [result] = await db.execute(sql, [password, email]);
-        if (result.length === 0) return sendResponse(res, 404, "No email found");
+        if(currentPassword === newPassword) return sendResponse(res,401,"current and new password cannot be same")
 
+        const sql = "select password_hash from users where id = ? limit 1";
+        const [result] = await db.execute(sql, [id]);
+
+        if (result.length === 0) return sendResponse(res, 404, 'No user found');
+        const password_hash = result[0].password_hash;
+
+        const compared = await bcrypt.compare(currentPassword, password_hash);
+        
+        if (!compared) return sendResponse(res, 404, "Current password is incorrect");
+
+        const newHashPassword = await bcrypt.hash(newPassword,12)
+        const sql1 = "UPDATE users SET password_hash = ? WHERE id = ?";
+        const [result1] = await db.execute(sql1, [newHashPassword, id]);
+        console.log('result1=>',result1);
+        if (result1.affectedRows === 0) {
+            return sendResponse(res, 404, "User not found or password not updated");
+        }
         return sendResponse(res, 201, "Password updated successfully");
     } catch (error) {
         console.error("Error: ", error)
