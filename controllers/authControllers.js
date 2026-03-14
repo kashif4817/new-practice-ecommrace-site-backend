@@ -5,6 +5,7 @@ import jwt, { decode } from 'jsonwebtoken';
 import { sendEmail } from "../utils/sendEmail.js";
 import { verifyEmailTemplate } from "../emails/verifyEmailTemplate.js";
 import { forgotPasswordTemplate } from "../emails/forgotPasswordTemplate.js";
+import { signupVerifyTemplate } from "../emails/signupOtpVerifyTemplate.js";
 
 
 export const sendResponse = (res, statusCode, message, data = null) => {
@@ -230,7 +231,10 @@ export const verifyEmail = async (req, res) => {
 
 export const forgetPassword = async (req, res) => {
     try {
+        console.log('req.body')
+        console.log(req.body);
         const { email } = req.body;
+
 
         const sql = "select * from users where email = ? limit  1";
         const [rows] = await db.execute(sql, [email]);
@@ -250,7 +254,7 @@ export const forgetPassword = async (req, res) => {
             html: forgotPasswordTemplate(generateOTP)
         })
         console.log('OTP sent')
-        return sendResponse(res, 200, "OTP sent")
+        return sendResponse(res, 200, "OTP sent", { email })
 
     } catch (error) {
         console.error("Error: ", error)
@@ -259,7 +263,7 @@ export const forgetPassword = async (req, res) => {
 }
 
 
-export const verifyOtp = async (req, res) => {
+export const verifyOtpForgot = async (req, res) => {
     try {
         const { otp } = req.body;
 
@@ -294,7 +298,7 @@ export const resetPassword = async (req, res) => {
         const { currentPassword, newPassword } = req.body;
         const id = req.id;
 
-        if(currentPassword === newPassword) return sendResponse(res,401,"current and new password cannot be same")
+        if (currentPassword === newPassword) return sendResponse(res, 401, "current and new password cannot be same")
 
         const sql = "select password_hash from users where id = ? limit 1";
         const [result] = await db.execute(sql, [id]);
@@ -303,17 +307,106 @@ export const resetPassword = async (req, res) => {
         const password_hash = result[0].password_hash;
 
         const compared = await bcrypt.compare(currentPassword, password_hash);
-        
+
         if (!compared) return sendResponse(res, 404, "Current password is incorrect");
 
-        const newHashPassword = await bcrypt.hash(newPassword,12)
+        const newHashPassword = await bcrypt.hash(newPassword, 12)
         const sql1 = "UPDATE users SET password_hash = ? WHERE id = ?";
         const [result1] = await db.execute(sql1, [newHashPassword, id]);
-        console.log('result1=>',result1);
         if (result1.affectedRows === 0) {
             return sendResponse(res, 404, "User not found or password not updated");
         }
         return sendResponse(res, 201, "Password updated successfully");
+    } catch (error) {
+        console.error("Error: ", error)
+        sendResponse(res, 505, "An unexpected error occurred")
+    }
+}
+
+
+export const updatePassword = async (req, res) => {
+    console.log(req.body)
+    const { email, password } = req.body;
+
+    if (!password) return sendResponse(res, 401, "password is required");
+
+    const password_hash = await bcrypt.hash(password, 12);
+    console.log(password_hash)
+    const sql = "UPDATE users SET password_hash = ? WHERE email = ?";
+
+    const [result] = await db.execute(sql, [password_hash, email]);
+    console.log(result);
+
+    if (result.affectedRows === 0) {
+        return sendResponse(res, 404, "User not found");
+    }
+
+    return sendResponse(res, 200, "Password updated successfully");
+}
+
+
+export const OtpSentSignup = async (req, res) => {
+
+    try {
+
+        const { email } = req.body;
+        console.log("req.body", req.body)
+
+        const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
+        const [rows] = await db.query(sql, [email]);
+        if (rows.length >= 1) return sendResponse(res, 409, "Email is already taken");
+
+        console.log(rows);
+        const generateOTP = Math.floor(100000 + Math.random() * 900000).toString();
+        console.log("otp:", generateOTP);
+        const otp_hash = await bcrypt.hash(generateOTP, 10)
+        const sql1 = `INSERT INTO temp_otps ( email,otp_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 2 MINUTE))`
+        const [result] = await db.execute(sql1, [email, otp_hash]);
+        console.log(result)
+
+
+        sendEmail({
+            to: email,
+            subject: "Signup Verification",
+            html: signupVerifyTemplate(generateOTP)
+        })
+        console.log('OTP sent')
+        return sendResponse(res, 200, "OTP sent", { email })
+
+    } catch (error) {
+        console.error("Error: ", error)
+        sendResponse(res, 505, "An unexpected error occurred")
+    }
+
+}
+
+
+
+export const verifyOtpSignup = async (req, res) => {
+    try {
+        const { otp, email } = req.body;
+        console.log('req.body', req.body);
+
+        if (!otp.trim()) return sendResponse(res, 400, "Otp is required");
+
+        const sql = 'SELECT * FROM temp_otps WHERE email = ? AND user_id IS NULL ORDER BY id DESC LIMIT 1;';
+
+        const [result] = await db.execute(sql, [email])
+        if (result.length === 0) return sendResponse(res, 404, "No otp found");
+        console.log(result);
+        console.log(result[0].otp_hash);
+
+        const otp_hash = result[0].otp_hash;
+        const isExpired = result[0].expires_at;
+
+        const compared = await bcrypt.compare(otp, otp_hash)
+        if (!compared) return sendResponse(res, 400, "Invalid OTP code");
+
+        if (isExpired < new Date()) return sendResponse(res, 400, "Otp has been expired");
+
+
+        return sendResponse(res, 200, "Otp found");
+
     } catch (error) {
         console.error("Error: ", error)
         sendResponse(res, 505, "An unexpected error occurred")

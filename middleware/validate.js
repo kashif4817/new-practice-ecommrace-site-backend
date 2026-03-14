@@ -1,5 +1,6 @@
 export const validate = (schema) => (req, res, next) => {
   const result = schema.safeParse(req.body);
+  console.log("result from validate.js middleware" ,result)
 
   if (!result.success) {
     const errors = result.error?.issues?.map(e => e.message) || ["Invalid request"];
