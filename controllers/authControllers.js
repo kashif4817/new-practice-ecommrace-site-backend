@@ -6,15 +6,9 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { verifyEmailTemplate } from "../emails/verifyEmailTemplate.js";
 import { forgotPasswordTemplate } from "../emails/forgotPasswordTemplate.js";
 import { signupVerifyTemplate } from "../emails/signupOtpVerifyTemplate.js";
+import { sendResponse } from "../utils/sendResponse.js";
 
 
-export const sendResponse = (res, statusCode, message, data = null) => {
-    return res.status(statusCode).json({
-        success: statusCode >= 200 && statusCode < 300, // true if 2xx
-        message,
-        data // optional, can be undefined
-    });
-};
 
 export const getMe = async (req, res) => {
     const id = req.id
@@ -80,17 +74,25 @@ export const signin = async (req, res) => {
         const sql = 'SELECT * FROM users WHERE email = ? LIMIT 1';
         const [rows] = await db.query(sql, [email]);
 
-        if (rows.length === 0) {
-            return sendResponse(res, 500, "Invalid credentials");
-        }
+        if (rows.length === 0) return sendResponse(res, 500, "Invalid credentials")
 
         const user = rows[0];
         console.log(user)
         const isMatch = await bcrypt.compare(password, user.password_hash);
 
         if (!isMatch) {
-            return sendResponse(res, 500, "Invalid credentials");
+            await db.execute('UPDATE users SET login_attempts = login_attempts + 1 WHERE email = ?', [email])
+
+            if (user.login_attempts + 1 >= 5) {
+                await db.execute('UPDATE users SET temp_block = 1, block_time = NOW() WHERE id = ?', [user.id]);
+                return sendResponse(res, 429, 'Too many failed attempts. You are blocked for 15 minutes.');
+            }
+            return sendResponse(res, 401, `Invalid credentials.`);
+            // return sendResponse(res, 401, `Invalid credentials. ${4 - user.login_attempts} attempt(s) remaining.`);
         }
+
+        await db.execute('UPDATE users SET login_attempts = 0, temp_block = 0, block_time = NULL WHERE id = ?', [user.id]);
+
 
         const accessToken = jwt.sign(
             { id: user.id, email: user.email },
@@ -134,8 +136,9 @@ export const signin = async (req, res) => {
         console.error("Signup error:", error);
         return sendResponse(res, 500, "Internal server error");
     }
-
 }
+
+
 
 export const logout = async (req, res) => {
     res.clearCookie("token", {

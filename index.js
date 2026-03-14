@@ -4,11 +4,13 @@ import dotenv from 'dotenv'
 import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import routes from './routes/authRoutes.js'
-
+import { sanitizeInput } from './middleware/sanitize.js'
 
 const app = express();
 app.use(express.json());
+app.use(sanitizeInput)
 app.use(cookieParser());
+
 app.use(cors({
     origin: "http://localhost:5173",
     credentials: true

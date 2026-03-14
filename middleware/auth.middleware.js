@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken'
-import { sendResponse } from "../controllers/authControllers.js";
-
+import { sendResponse } from '../utils/sendResponse.js';
 
 export const authMiddleware = (req, res, next) => {
     console.log("entered in middle ware")
