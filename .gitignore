@@ -1,36 +1,25 @@
+# Environment variables
+.env
+.env.local
+.env.development
+.env.production
+
 # Dependencies
 node_modules/
 
-# Build output
-build/
-dist/
-
-# Environment files
-.env
-.env.*
-
 # Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
 logs/
+*.log
+npm-debug.log*
 
-# Coverage
-coverage/
-
-# Runtime
-*.pid
-*.seed
-*.pid.lock
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
 
-# IDE/editor
+# Build output
+dist/
+build/
+
+# Editor files
 .vscode/
 .idea/
-
-# Misc
-*.log

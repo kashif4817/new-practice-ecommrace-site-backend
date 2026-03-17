@@ -1,41 +1,47 @@
-import db from "../config/db.js";
+import supabase from "../config/supabase.js";
 import { sendResponse } from "../utils/sendResponse.js";
 
 export const checkTempBlock = async (req, res, next) => {
-  console.log("Entered to check temp block account")
+  console.log("Entered to check temp block account");
   try {
     const { email } = req.body;
-    const sql = "select * from users where email = ? limit 1";
 
-    const [result] = await db.execute(sql, [email]);
-    if (result.length === 0) return sendResponse(res, 404, "Invalid credentials")
-    console.log('result', result)
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .single();
 
-    const user = result[0]
-    console.log('user', user)
+    if (error || !user) return sendResponse(res, 404, "Invalid credentials");
 
-    if (user.is_active === 0) {
+    console.log('user', user);
+
+    if (!user.is_active) {
       return sendResponse(res, 403, 'Your account has been deactivated. Contact support.');
     }
 
-    if (user.temp_block === 1) {
-      const blockExpiry = new Date(user.block_time.getTime() + 15 * 60 * 1000);
+    if (user.temp_block) {
+      const blockExpiry = new Date(new Date(user.block_time).getTime() + 15 * 60 * 1000);
 
       if (new Date() < blockExpiry) {
         const minutesLeft = Math.ceil((blockExpiry - new Date()) / 60000);
         return sendResponse(res, 429, `Too many failed attempts. Try again in ${minutesLeft} minute(s).`);
       }
 
-      const [rows] = await db.execute('UPDATE users SET temp_block = 0, login_attempts = 0, block_time = NULL WHERE email = ?', [email]);
-      console.log(rows);
-      if (rows.affectedRows === 0) {
-        console.error("nothing update one extra step ");
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({ temp_block: false, login_attempts: 0, block_time: null })
+        .eq('email', email);
+
+      if (updateError) {
+        console.error("nothing updated - one extra step", updateError);
       }
     }
-    console.log("exit from check temp block")
-    next()
+
+    console.log("exit from check temp block");
+    next();
   } catch (error) {
     console.error(error);
     return sendResponse(res, 500, "Internal server error");
   }
-}
+};
