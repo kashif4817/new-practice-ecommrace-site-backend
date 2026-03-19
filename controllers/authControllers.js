@@ -82,7 +82,7 @@ export const signin = async (req, res) => {
             .eq('email', email)
             .single();
 
-        if (error || !user) return sendResponse(res, 500, "Invalid credentials");
+        if (error || !user) return sendResponse(res, 401, "Invalid credentials");
 
         console.log(user);
         const isMatch = await bcrypt.compare(password, user.password_hash);
@@ -114,37 +114,42 @@ export const signin = async (req, res) => {
             process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN }
         );
-        console.log('accessToken', accessToken);
 
         const refreshToken = jwt.sign(
             { id: user.id },
             process.env.REFRESH_SECRET,
             { expiresIn: process.env.JWT_REFRESH_IN }
         );
-        console.log('refreshToken', refreshToken);
+
+        const hashedRefreshToken = await bcrypt.hash(refreshToken, 12)
 
         await supabase
             .from('users')
-            .update({ refresh_token: refreshToken })
+            .update({ refresh_token: hashedRefreshToken })
             .eq('id', user.id);
 
-        const cookieOptions = {
+
+        res.cookie("accessToken", accessToken, {
             httpOnly: true,
             secure: false,
             sameSite: "Lax",
             maxAge: rememberMe ? 7 * 24 * 60 * 60 * 1000 : undefined
-        };
+        });
 
-        console.log('cookieOptions', cookieOptions);
+        res.cookie('refreshToken', refreshToken, {
+            httpOnly: true,
+            secure: false,
+            sameSite: "Lax",
+            maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+        })
 
-        res.cookie("token", accessToken, cookieOptions);
         return sendResponse(res, 201, "Signin successful", {
             user: {
                 id: user.id,
                 full_name: user.full_name,
                 phone: user.phone,
                 email: user.email
-            }, accessToken
+            }
         });
 
     } catch (error) {

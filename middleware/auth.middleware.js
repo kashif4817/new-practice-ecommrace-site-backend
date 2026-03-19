@@ -7,7 +7,7 @@ export const authMiddleware = (req, res, next) => {
     const token = req.cookies.token;
     console.log('token', token)
 
-    if (!token) return sendResponse(res, 404, "No token found or Unauthorized");
+    if (!token) return sendResponse(res, 401, "No token found or Unauthorized");
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET)
