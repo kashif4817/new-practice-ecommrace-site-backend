@@ -28,6 +28,9 @@ app.use(cookieParser());
 app.use(sanitizeInput)
 app.use('/api/auth', routes)
 
+app.get('/',(req,res)=>{
+    res.send("Hello world!")
+})
 
 
 const PORT = process.env.PORT || 5000;
