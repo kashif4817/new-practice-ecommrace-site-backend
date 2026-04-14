@@ -1,4 +1,3 @@
-// authController.js
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import supabase from "../config/supabase.js";
@@ -10,7 +9,6 @@ import { sendResponse } from "../utils/sendResponse.js";
 
 export const getMe = async (req, res) => {
   const id = req.id;
-  console.log(id);
   try {
     const { data: user, error } = await supabase
       .from("users")
@@ -33,10 +31,8 @@ export const getMe = async (req, res) => {
 };
 
 export const signup = async (req, res) => {
-  console.log("signup api hit");
   try {
     const { name, phone, email, password } = req.body;
-    console.log(req.body);
 
     const lowerCaseEmail = email.toLowerCase();
     const passwordHash = await bcrypt.hash(password, 12);
@@ -66,10 +62,8 @@ export const signup = async (req, res) => {
 };
 
 export const signin = async (req, res) => {
-  console.log("signin api hit");
   try {
     const { email, password, rememberMe } = req.body;
-    console.log(req.body);
 
     const { data: user, error } = await supabase
       .from("users")
@@ -79,7 +73,6 @@ export const signin = async (req, res) => {
 
     if (error || !user) return sendResponse(res, 401, "Invalid credentials");
 
-    console.log(user);
     const isMatch = await bcrypt.compare(password, user.password_hash);
 
     if (!isMatch) {
@@ -166,6 +159,7 @@ export const logout = async (req, res) => {
   });
   sendResponse(res, 200, "Logged out successfully");
 };
+
 export const refreshToken = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
@@ -207,7 +201,6 @@ export const refreshToken = async (req, res) => {
 export const checkEmail = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log("req.body", req.body);
 
     const { data, error } = await supabase
       .from("users")
@@ -216,7 +209,6 @@ export const checkEmail = async (req, res) => {
       .single();
 
     if (data) {
-      console.log("taken");
       return sendResponse(res, 409, "Email is already taken");
     }
 
@@ -234,10 +226,8 @@ export const checkEmail = async (req, res) => {
 export const verifyEmail = async (req, res) => {
   try {
     const { email, id } = req.body;
-    console.log("BODY:", req.body);
 
     const generateOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log(generateOTP);
     const otp_hash = await bcrypt.hash(generateOTP, 10);
 
     const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
@@ -256,7 +246,7 @@ export const verifyEmail = async (req, res) => {
 
     return sendResponse(res, 200, "Email sent");
   } catch (error) {
-    console.log("error", error);
+    console.error(error);
     sendResponse(
       res,
       500,
@@ -267,8 +257,6 @@ export const verifyEmail = async (req, res) => {
 
 export const forgetPassword = async (req, res) => {
   try {
-    console.log("req.body");
-    console.log(req.body);
     const { email } = req.body;
 
     const { data: user, error } = await supabase
@@ -296,7 +284,6 @@ export const forgetPassword = async (req, res) => {
       html: forgotPasswordTemplate(generateOTP),
     });
 
-    console.log("OTP sent");
     return sendResponse(res, 200, "OTP sent", { email });
   } catch (error) {
     console.error("Error: ", error);
@@ -371,21 +358,17 @@ export const resetPassword = async (req, res) => {
 };
 
 export const updatePassword = async (req, res) => {
-  console.log(req.body);
   const { email, password } = req.body;
 
   if (!password) return sendResponse(res, 401, "password is required");
 
   const password_hash = await bcrypt.hash(password, 12);
-  console.log(password_hash);
 
   const { data, error } = await supabase
     .from("users")
     .update({ password_hash })
     .eq("email", email)
     .select();
-
-  console.log(data);
 
   if (error || !data || data.length === 0) {
     return sendResponse(res, 404, "User not found");
@@ -397,7 +380,6 @@ export const updatePassword = async (req, res) => {
 export const OtpSentSignup = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log("req.body", req.body);
 
     const { data: existingUser } = await supabase
       .from("users")
@@ -408,7 +390,6 @@ export const OtpSentSignup = async (req, res) => {
     if (existingUser) return sendResponse(res, 409, "Email is already taken");
 
     const generateOTP = Math.floor(100000 + Math.random() * 900000).toString();
-    console.log("otp:", generateOTP);
     const otp_hash = await bcrypt.hash(generateOTP, 10);
 
     const expiresAt = new Date(Date.now() + 2 * 60 * 1000).toISOString();
@@ -425,7 +406,6 @@ export const OtpSentSignup = async (req, res) => {
       html: signupVerifyTemplate(generateOTP),
     });
 
-    console.log("OTP sent");
     return sendResponse(res, 200, "OTP sent", { email });
   } catch (error) {
     console.error("Error: ", error);
@@ -436,7 +416,6 @@ export const OtpSentSignup = async (req, res) => {
 export const verifyOtpSignup = async (req, res) => {
   try {
     const { otp, email } = req.body;
-    console.log("req.body", req.body);
 
     if (!otp.trim()) return sendResponse(res, 400, "Otp is required");
 
@@ -451,17 +430,10 @@ export const verifyOtpSignup = async (req, res) => {
 
     if (error || !data) return sendResponse(res, 404, "No otp found");
 
-    console.log(data);
-    console.log(data.otp_hash);
-
-    // ✅ check expiry first
     const isExpired = new Date(data.expires_at);
-    console.log(isExpired);
-    console.log(new Date());
     if (isExpired < new Date())
       return sendResponse(res, 400, "Otp has been expired");
 
-    // ✅ then compare OTP
     const compared = await bcrypt.compare(otp, data.otp_hash);
     if (!compared) return sendResponse(res, 400, "Invalid OTP code");
 

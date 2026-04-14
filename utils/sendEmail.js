@@ -10,14 +10,11 @@ const transporter = nodemailer.createTransport({
     },
 });
 
-
 export const sendEmail = async ({ to, subject, html }) => {
-    console.log('Sending OTP...');
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
         from: `"LUXE Store" <${process.env.EMAIL_USER}>`,
         to,
         subject,
         html,
     });
-     console.log('OTP sent!');
 };

@@ -1,4 +1,3 @@
-// index.js
 import morgan from 'morgan';
 import express from 'express'
 import dotenv from 'dotenv'

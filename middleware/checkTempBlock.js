@@ -2,7 +2,6 @@ import supabase from "../config/supabase.js";
 import { sendResponse } from "../utils/sendResponse.js";
 
 export const checkTempBlock = async (req, res, next) => {
-  console.log("Entered to check temp block account");
   try {
     const { email } = req.body;
 
@@ -13,8 +12,6 @@ export const checkTempBlock = async (req, res, next) => {
       .single();
 
     if (error || !user) return sendResponse(res, 404, "Invalid credentials");
-
-    console.log('user', user);
 
     if (!user.is_active) {
       return sendResponse(res, 403, 'Your account has been deactivated. Contact support.');
@@ -34,11 +31,10 @@ export const checkTempBlock = async (req, res, next) => {
         .eq('email', email);
 
       if (updateError) {
-        console.error("nothing updated - one extra step", updateError);
+        console.error("Failed to unblock user:", updateError);
       }
     }
 
-    console.log("exit from check temp block");
     next();
   } catch (error) {
     console.error(error);
